@@ -13,7 +13,7 @@ type EmailMsg = {
   subject: string;
   to: string;
   body?: string;
-  header?: {
+  headers?: {
     [key: string]: string;
   };
   attachments: EmailAttachment[];
@@ -210,7 +210,7 @@ export function readImapMailbox(
               allMsgs[seqno - 1].msgID = parsedHeader["message-id"][0];
 
               if (config.includeHeader) {
-                allMsgs[seqno - 1].header = parsedHeader;
+                allMsgs[seqno - 1].headers = parsedHeader;
               }
             } else {
               allMsgs[seqno - 1].body = buffer
