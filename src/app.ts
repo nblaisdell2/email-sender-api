@@ -36,7 +36,7 @@ app.use(async function (
   }
 
   if (data.message == "download") {
-    return res.status(data?.status || 200).download("target/" + data.data);
+    return res.status(data?.status || 200).download("/tmp/" + data.data);
   } else {
     return res
       .status(data?.status || 200)
