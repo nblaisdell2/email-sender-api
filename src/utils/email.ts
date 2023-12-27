@@ -7,7 +7,7 @@ import { emptyDirSync } from "fs-extra";
 import Imap from "node-imap";
 import { createTransport } from "nodemailer";
 
-const ATTACHMENTS_LOCATION = "target";
+const ATTACHMENTS_LOCATION = "/tmp/target";
 
 // ========================================================
 // ====================== node-imap =======================
