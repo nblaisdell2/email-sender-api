@@ -151,10 +151,10 @@ const readImapMailbox = (
             from: "",
             subject: "",
             to: "",
-            attachments: [],
           };
           if (config.includeBody) newEmailMsg["body"] = "";
           if (config.includeHeader) newEmailMsg["headers"] = {};
+          if (config.includeAttachments) newEmailMsg["attachments"] = [];
           return newEmailMsg as EmailMsg;
         });
 
