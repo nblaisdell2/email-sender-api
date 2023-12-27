@@ -62,7 +62,7 @@ app.use(function (
 
   // render the error page
   res.status(err.status || 500);
-  res.json({ error: "error" });
+  res.json({ error: err.message });
 });
 
 export const throwExpressError = (
