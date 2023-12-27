@@ -7,7 +7,7 @@ import { emptyDirSync } from "fs-extra";
 import Imap from "node-imap";
 import { createTransport } from "nodemailer";
 
-const ATTACHMENTS_LOCATION = ".";
+const ATTACHMENTS_LOCATION = "/tmp";
 
 // ========================================================
 // ====================== node-imap =======================
@@ -105,14 +105,14 @@ const readImapMailbox = (
   reject: (reason?: any) => void,
   config: ReadMailConfig
 ) => {
-  if (config.download) {
-    // Create (or empty) the target directory for attachments before downloading
-    if (!existsSync(ATTACHMENTS_LOCATION)) {
-      mkdirSync(ATTACHMENTS_LOCATION, { recursive: true });
-    } else {
-      emptyDirSync(ATTACHMENTS_LOCATION);
-    }
-  }
+  // if (config.download) {
+  //   // Create (or empty) the target directory for attachments before downloading
+  //   if (!existsSync(ATTACHMENTS_LOCATION)) {
+  //     mkdirSync(ATTACHMENTS_LOCATION, { recursive: true });
+  //   } else {
+  //     emptyDirSync(ATTACHMENTS_LOCATION);
+  //   }
+  // }
 
   imap.openBox(config.folderName, (err, box) => {
     if (err) reject(err);
