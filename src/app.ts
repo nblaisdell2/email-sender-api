@@ -39,6 +39,7 @@ app.use(async function (
   //   .status(data?.status || 200)
   //   .json({ message: data.message, data: data.data });
   if (data.message == "download") {
+    res.setHeader("Accept", data.data["Content-Type"]);
     res.setHeader("Content-Type", data.data["Content-Type"]);
     res.setHeader(
       "Content-Disposition",
