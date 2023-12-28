@@ -35,10 +35,18 @@ app.use(async function (
     return throwExpressError(next, data.message);
   }
 
+  // return res
+  //   .status(data?.status || 200)
+  //   .json({ message: data.message, data: data.data });
   if (data.message == "download") {
+    res.setHeader("Content-Type", data.data["Content-Type"]);
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="' + data.data.filename + '"'
+    );
     return res
       .status(data?.status || 200)
-      .json({ data: data.data, isBase64Encoded: true });
+      .end(Buffer.from(data.data.data.toString("utf-8"), "base64"));
   } else {
     return res
       .status(data?.status || 200)
