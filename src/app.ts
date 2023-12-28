@@ -45,9 +45,7 @@ app.use(async function (
       "Content-Disposition",
       'attachment; filename="' + data.data.filename + '"'
     );
-    return res
-      .status(data?.status || 200)
-      .end(Buffer.from(data.data.data.toString("utf-8"), "base64"));
+    return res.status(data?.status || 200).end(data.data.data);
   } else {
     return res
       .status(data?.status || 200)
