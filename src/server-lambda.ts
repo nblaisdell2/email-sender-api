@@ -36,8 +36,5 @@ function onListening() {
 }
 
 exports.handler = (event: any, context: any) => {
-  proxy(server, event, context, "CALLBACK", (err, res) => {
-    console.log("response in callback for Lambda!", res);
-    return res;
-  });
+  proxy(server, event, context);
 };
