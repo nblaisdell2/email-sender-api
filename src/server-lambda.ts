@@ -40,7 +40,7 @@ exports.handler = serverlessExpress({
   app,
   binarySettings: {
     isBinary: true,
-    contentTypes: [],
+    contentTypes: ["application/pdf"],
   },
 });
 
