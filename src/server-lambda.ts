@@ -35,6 +35,9 @@ function onListening() {
   console.log(`Listening on ${bind}`);
 }
 
-exports.handler = (event: any, context: any) => {
-  proxy(server, event, context);
+exports.handler = async (event: any, context: any) => {
+  await proxy(server, event, context, "CALLBACK", (err, response) => {
+    console.log("response", response);
+    return response;
+  }).promise;
 };
