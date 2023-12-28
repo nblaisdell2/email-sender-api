@@ -1,8 +1,8 @@
-const awsServerlessExpress = require("aws-serverless-express");
+import { createServer, proxy } from "aws-serverless-express";
 import app from "./app";
 
 // Create HTTP server.
-const server = awsServerlessExpress.createServer(app);
+const server = createServer(app);
 
 server.on("error", onError);
 server.on("listening", onListening);
@@ -36,5 +36,8 @@ function onListening() {
 }
 
 exports.handler = (event: any, context: any) => {
-  awsServerlessExpress.proxy(server, event, context);
+  proxy(server, event, context, "CALLBACK", (err, res) => {
+    console.log("response in callback for Lambda!", res);
+    return res;
+  });
 };

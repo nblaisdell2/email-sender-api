@@ -35,13 +35,16 @@ app.use(async function (
     return throwExpressError(next, data.message);
   }
 
-  if (data.message == "download") {
-    return res.status(data?.status || 200).download("/tmp/" + data.data);
-  } else {
-    return res
-      .status(data?.status || 200)
-      .json({ message: data.message, data: data.data });
-  }
+  return res
+    .status(data?.status || 200)
+    .json({ message: data.message, data: data.data });
+  // if (data.message == "download") {
+  //   return res.status(data?.status || 200).download("/tmp/" + data.data);
+  // } else {
+  //   return res
+  //     .status(data?.status || 200)
+  //     .json({ message: data.message, data: data.data });
+  // }
 });
 
 // catch 404 and forward to error handler

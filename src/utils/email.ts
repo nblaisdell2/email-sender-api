@@ -7,7 +7,8 @@ import { emptyDirSync } from "fs-extra";
 import Imap from "node-imap";
 import { createTransport } from "nodemailer";
 
-const ATTACHMENTS_LOCATION = "/tmp";
+// const ATTACHMENTS_LOCATION = "/tmp";
+const ATTACHMENTS_LOCATION = "target";
 
 // ========================================================
 // ====================== node-imap =======================
@@ -59,6 +60,7 @@ type EmailAttachment = {
   type: string;
   encoding: string;
   size: number;
+  content: string;
 };
 
 const imap = new Imap({
@@ -201,7 +203,7 @@ const readImapMailbox = (
           });
         });
 
-        msg.once("attributes", function (attrs) {
+        msg.once("attributes", async function (attrs) {
           if (config.includeAttachments) {
             // console.log(attrs);
 
@@ -214,28 +216,39 @@ const readImapMailbox = (
                     currPart.disposition.params?.filename ||
                     currPart.params?.name;
 
-                  allMsgs[seqno - 1].attachments.push({
+                  let newAtt: EmailAttachment = {
                     filename: attFileName,
                     encoding: currPart.encoding,
                     size: currPart.size,
                     type: currPart.type + "/" + currPart.subtype,
-                  });
+                    content: "",
+                  };
 
                   if (
                     config.download &&
                     config.download.filename == attFileName
                   ) {
-                    const f = imap.fetch(attrs.uid, {
-                      //do not use imap.seq.fetch here
-                      bodies: [currPart.partID],
-                      struct: true,
+                    const content = await new Promise((resolve, reject) => {
+                      const f = imap.fetch(attrs.uid, {
+                        //do not use imap.seq.fetch here
+                        bodies: [currPart.partID],
+                        struct: true,
+                      });
+                      //build function to process attachment message
+                      f.on(
+                        "message",
+                        buildAttMessageFunction(
+                          ATTACHMENTS_LOCATION,
+                          currPart,
+                          resolve
+                        )
+                      );
                     });
-                    //build function to process attachment message
-                    f.on(
-                      "message",
-                      buildAttMessageFunction(ATTACHMENTS_LOCATION, currPart)
-                    );
+
+                    newAtt.content = content as string;
                   }
+
+                  allMsgs[seqno - 1].attachments.push(newAtt);
                 }
               }
             }
@@ -258,7 +271,11 @@ const readImapMailbox = (
   });
 };
 
-function buildAttMessageFunction(targetLocation: string, attachment: any) {
+function buildAttMessageFunction(
+  targetLocation: string,
+  attachment: any,
+  resolve: (value: unknown) => any
+) {
   var filename = attachment.params.name;
   var encoding = attachment.encoding;
 
@@ -267,26 +284,35 @@ function buildAttMessageFunction(targetLocation: string, attachment: any) {
   return function (msg: Imap.ImapMessage, seqno: number) {
     var prefix = "(#" + seqno + ") ";
     msg.on("body", function (stream, info) {
-      //Create a write stream so that we can stream the attachment to file;
-      console.log(
-        prefix + "Streaming this attachment to file",
-        fileFullPath,
-        info
-      );
-      var writeStream = createWriteStream(fileFullPath);
-      writeStream.on("finish", function () {
-        console.log(prefix + "Done writing to file %s", fileFullPath);
+      var buffer = "";
+      stream.on("data", function (chunk) {
+        // count += chunk.length;
+        buffer += chunk.toString("utf8");
       });
 
-      //stream.pipe(writeStream); this would write base64 data to the file.
-      //so we decode during streaming using
-      if (encoding && encoding.toUpperCase() === "BASE64") {
-        //the stream is base64 encoded, so here the stream is decode on the fly and piped to the write stream (file)
-        stream.pipe(new Base64Decode()).pipe(writeStream);
-      } else {
-        //here we have none or some other decoding streamed directly to the file which renders it useless probably
-        stream.pipe(writeStream);
-      }
+      stream.once("end", () => {
+        resolve(buffer);
+      });
+      // //Create a write stream so that we can stream the attachment to file;
+      // console.log(
+      //   prefix + "Streaming this attachment to file",
+      //   fileFullPath,
+      //   info
+      // );
+      // var writeStream = createWriteStream(fileFullPath);
+      // writeStream.on("finish", function () {
+      //   console.log(prefix + "Done writing to file %s", fileFullPath);
+      // });
+
+      // //stream.pipe(writeStream); this would write base64 data to the file.
+      // //so we decode during streaming using
+      // if (encoding && encoding.toUpperCase() === "BASE64") {
+      //   //the stream is base64 encoded, so here the stream is decode on the fly and piped to the write stream (file)
+      //   stream.pipe(new Base64Decode()).pipe(writeStream);
+      // } else {
+      //   //here we have none or some other decoding streamed directly to the file which renders it useless probably
+      //   stream.pipe(writeStream);
+      // }
     });
     msg.once("end", function () {
       console.log(prefix + "Finished attachment %s", fileFullPath);
