@@ -142,7 +142,7 @@ export const getAttachments = async function (
 
   const message = messages.filter((m) => m.msgID != "")[0];
   const att = message.attachments.filter((a) => a.filename == filename)[0];
-  console.log("messages", messages.filter((m) => m.msgID != "")[0]);
+  // console.log("messages", messages.filter((m) => m.msgID != "")[0]);
 
   next({
     status: 200,

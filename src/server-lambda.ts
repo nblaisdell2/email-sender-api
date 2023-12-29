@@ -38,7 +38,6 @@ import serverlessExpress from "@codegenie/serverless-express";
 
 exports.handler = serverlessExpress({
   app,
-  binaryMimeTypes: ["application/pdf"],
   binarySettings: {
     isBinary: true,
     contentTypes: ["application/pdf"],
