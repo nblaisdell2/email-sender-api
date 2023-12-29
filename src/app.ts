@@ -47,7 +47,7 @@ app.use(async function (
     );
     return res
       .status(data?.status || 200)
-      .download(Buffer.from(data.data.data, "base64").toString("utf-8"));
+      .end(Buffer.from(data.data.data, "base64").toString("base64"));
   } else {
     return res
       .status(data?.status || 200)
