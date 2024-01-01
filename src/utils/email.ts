@@ -1,8 +1,7 @@
 import { Request } from "express";
 import client from "https";
 import { Base64Decode } from "base64-stream";
-import { createWriteStream, existsSync, mkdirSync, rm } from "fs";
-import { emptyDirSync } from "fs-extra";
+import { createWriteStream, rm } from "fs";
 
 import Imap from "node-imap";
 import { createTransport } from "nodemailer";
@@ -60,7 +59,7 @@ type EmailAttachment = {
   type: string;
   encoding: string;
   size: number;
-  content: string;
+  url: string;
 };
 
 const imap = new Imap({
@@ -221,14 +220,14 @@ const readImapMailbox = (
                     encoding: currPart.encoding,
                     size: currPart.size,
                     type: currPart.type + "/" + currPart.subtype,
-                    content: "",
+                    url: "",
                   };
 
                   if (
                     config.download &&
                     config.download.filename == attFileName
                   ) {
-                    const content = await new Promise((resolve, reject) => {
+                    const url = await new Promise((resolve, reject) => {
                       const f = imap.fetch(attrs.uid, {
                         //do not use imap.seq.fetch here
                         bodies: [currPart.partID],
@@ -245,7 +244,8 @@ const readImapMailbox = (
                       );
                     });
 
-                    newAtt.content = content as string;
+                    console.log("FINISHED (Got URL from attachment upload)");
+                    newAtt.url = url as string;
                   }
 
                   allMsgs[seqno - 1].attachments.push(newAtt);
@@ -265,6 +265,7 @@ const readImapMailbox = (
         // console.log("Fetch error: " + err);
       });
       fetch.once("end", function () {
+        console.log("FINISHED (Returning all email messages)");
         resolve(allMsgs);
       });
     });
@@ -283,37 +284,70 @@ function buildAttMessageFunction(
 
   return function (msg: Imap.ImapMessage, seqno: number) {
     var prefix = "(#" + seqno + ") ";
-    msg.on("body", function (stream, info) {
-      var buffer = "";
-      stream.on("data", function (chunk) {
-        // count += chunk.length;
-        buffer += chunk.toString("utf8");
-      });
-
-      stream.once("end", () => {
-        resolve(buffer);
-      });
-      // //Create a write stream so that we can stream the attachment to file;
-      // console.log(
-      //   prefix + "Streaming this attachment to file",
-      //   fileFullPath,
-      //   info
-      // );
-      // var writeStream = createWriteStream(fileFullPath);
-      // writeStream.on("finish", function () {
-      //   console.log(prefix + "Done writing to file %s", fileFullPath);
+    msg.on("body", async function (stream, info) {
+      // var buffer = "";
+      // stream.on("data", function (chunk) {
+      //   // count += chunk.length;
+      //   buffer += chunk.toString("utf8");
       // });
 
-      // //stream.pipe(writeStream); this would write base64 data to the file.
-      // //so we decode during streaming using
-      // if (encoding && encoding.toUpperCase() === "BASE64") {
-      //   //the stream is base64 encoded, so here the stream is decode on the fly and piped to the write stream (file)
-      //   stream.pipe(new Base64Decode()).pipe(writeStream);
-      // } else {
-      //   //here we have none or some other decoding streamed directly to the file which renders it useless probably
-      //   stream.pipe(writeStream);
-      // }
+      // stream.once("end", () => {
+      //   console.log("buffer", buffer);
+
+      //   resolve(buffer);
+      // });
+
+      //Create a write stream so that we can stream the attachment to file;
+      console.log(
+        prefix + "Streaming this attachment to file",
+        fileFullPath,
+        info
+      );
+      var writeStream = createWriteStream(fileFullPath);
+
+      writeStream.on("finish", async function () {
+        console.log(prefix + "Done writing to file %s", fileFullPath);
+        resolve(fileFullPath);
+      });
+
+      //stream.pipe(writeStream); this would write base64 data to the file.
+      //so we decode during streaming using
+      if (encoding && encoding.toUpperCase() === "BASE64") {
+        //the stream is base64 encoded, so here the stream is decode on the fly and piped to the write stream (file)
+        stream.pipe(new Base64Decode()).pipe(writeStream);
+      } else {
+        //here we have none or some other decoding streamed directly to the file which renders it useless probably
+        stream.pipe(writeStream);
+      }
+
+      // const s3Client = new S3Client({});
+
+      // const myStream = createReadStream(fileFullPath);
+
+      // console.log(prefix + "Uploading to S3 bucket", fileFullPath);
+      // const s3result = await s3Client.send(
+      //   new PutObjectCommand({
+      //     Bucket: "public-email-images-001",
+      //     Key: "attachments/" + filename,
+      //     Body: myStream,
+      //   })
+      // );
+
+      // console.log("S3 Result:", s3result);
+      // console.log("Uploading to S3 bucket & Generating URL...");
+      // const url = await getSignedUrl(
+      //   s3Client,
+      //   new GetObjectCommand({
+      //     Bucket: "public-email-images-001",
+      //     Key: "attachments/" + filename,
+      //   }),
+      //   { expiresIn: 3600 }
+      // );
+
+      // console.log("URL:", url);
+      // resolve(url);
     });
+
     msg.once("end", function () {
       console.log(prefix + "Finished attachment %s", fileFullPath);
     });
@@ -484,9 +518,24 @@ export const getAllEmailFolders = async () => {
 };
 
 export const getEmailMessages = async (config: ReadMailConfig) => {
-  return await runImapCommand<EmailMsg[]>((resolve, reject) => {
+  const imapResult = await runImapCommand<EmailMsg[]>((resolve, reject) => {
     readImapMailbox(resolve, reject, config);
   });
+  console.log("FINISHED (runImapCommand)");
+
+  return imapResult;
+};
+
+export const getAttachment = async (config: ReadMailConfig) => {
+  const messages = await getEmailMessages(config);
+  console.log("FINISHED (getEmailMessages)");
+
+  const message = messages.filter((m) => m.msgID != "")[0];
+  const att = message.attachments.filter(
+    (a) => a.filename == config.download?.filename
+  )[0];
+
+  return att?.url;
 };
 
 export const sendEmailMessage = async (req: Request) => {

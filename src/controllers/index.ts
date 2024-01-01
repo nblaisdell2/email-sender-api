@@ -1,9 +1,18 @@
 import { Request, Response, NextFunction } from "express";
 import {
   getAllEmailFolders,
+  getAttachment,
   getEmailMessages,
   sendEmailMessage,
 } from "../utils/email";
+
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { createReadStream } from "fs";
 
 export const getEmailFolders = async function (
   req: Request,
@@ -121,7 +130,7 @@ export const getAttachments = async function (
     });
   }
 
-  const messages = await getEmailMessages({
+  const attachmentURL = await getAttachment({
     folderName: folder as string,
     includeBody: false,
     includeHeader: true,
@@ -139,19 +148,36 @@ export const getAttachments = async function (
       filename: filename as string,
     },
   });
+  console.log("FINISHED (getAttachment)");
 
-  const message = messages.filter((m) => m.msgID != "")[0];
-  const att = message.attachments.filter((a) => a.filename == filename)[0];
-  // console.log("messages", messages.filter((m) => m.msgID != "")[0]);
+  const s3Client = new S3Client({});
+
+  console.log("Uploading to S3 bucket", attachmentURL);
+  const s3result = await s3Client.send(
+    new PutObjectCommand({
+      Bucket: "public-email-images-001",
+      Key: "attachments/" + filename,
+      Body: createReadStream(attachmentURL),
+    })
+  );
+
+  console.log("S3 Result:", s3result);
+  console.log("Uploading to S3 bucket & Generating URL...");
+  const url = await getSignedUrl(
+    s3Client,
+    new GetObjectCommand({
+      Bucket: "public-email-images-001",
+      Key: "attachments/" + filename,
+    }),
+    { expiresIn: 3600 }
+  );
+
+  console.log("URL:", url);
 
   next({
     status: 200,
-    message: "download",
-    data: {
-      "Content-Type": att.type,
-      filename: att.filename,
-      data: att.content,
-    },
+    message: "Attachment available at the following URL",
+    data: url,
   });
 };
 

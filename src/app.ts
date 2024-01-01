@@ -1,6 +1,7 @@
 import express, { json, urlencoded } from "express";
 import type { Express, Request, Response, NextFunction } from "express";
 import createError, { HttpError } from "http-errors";
+import fileUpload from "express-fileupload";
 import cors from "cors";
 import { config } from "dotenv";
 config();
@@ -12,6 +13,7 @@ const app: Express = express();
 // Makes sure our API can only accept URL-encoded strings, or JSON data
 app.use(json());
 app.use(urlencoded({ extended: false }));
+app.use(fileUpload());
 
 // Adding CORS for working with cross-origin requests
 // Add additional URLs to the origin array here, when necessary
@@ -35,24 +37,9 @@ app.use(async function (
     return throwExpressError(next, data.message);
   }
 
-  // return res
-  //   .status(data?.status || 200)
-  //   .json({ message: data.message, data: data.data });
-  if (data.message == "download") {
-    res.setHeader("Accept", data.data["Content-Type"]);
-    res.setHeader("Content-Type", data.data["Content-Type"]);
-    res.setHeader(
-      "Content-Disposition",
-      'attachment; filename="' + data.data.filename + '"'
-    );
-    return res
-      .status(data?.status || 200)
-      .end(Buffer.from(data.data.data, "base64"));
-  } else {
-    return res
-      .status(data?.status || 200)
-      .json({ message: data.message, data: data.data });
-  }
+  return res
+    .status(data?.status || 200)
+    .json({ message: data.message, data: data.data });
 });
 
 // catch 404 and forward to error handler
