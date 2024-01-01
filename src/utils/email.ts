@@ -6,8 +6,8 @@ import { createWriteStream, rm } from "fs";
 import Imap from "node-imap";
 import { createTransport } from "nodemailer";
 
-// const ATTACHMENTS_LOCATION = "/tmp";
-const ATTACHMENTS_LOCATION = "target";
+const ATTACHMENTS_LOCATION = "/tmp";
+// const ATTACHMENTS_LOCATION = "target";
 
 // ========================================================
 // ====================== node-imap =======================
