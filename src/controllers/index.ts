@@ -148,7 +148,6 @@ export const getAttachments = async function (
       filename: filename as string,
     },
   });
-  console.log("FINISHED (getAttachment)");
 
   const s3Client = new S3Client({});
 

@@ -244,7 +244,6 @@ const readImapMailbox = (
                       );
                     });
 
-                    console.log("FINISHED (Got URL from attachment upload)");
                     newAtt.url = url as string;
                   }
 
@@ -265,7 +264,6 @@ const readImapMailbox = (
         // console.log("Fetch error: " + err);
       });
       fetch.once("end", function () {
-        console.log("FINISHED (Returning all email messages)");
         resolve(allMsgs);
       });
     });
@@ -277,7 +275,8 @@ function buildAttMessageFunction(
   attachment: any,
   resolve: (value: unknown) => any
 ) {
-  var filename = attachment.params.name;
+  var filename =
+    attachment.disposition.params?.filename || attachment.params?.name;
   var encoding = attachment.encoding;
 
   const fileFullPath = targetLocation + "/" + filename;
@@ -285,18 +284,6 @@ function buildAttMessageFunction(
   return function (msg: Imap.ImapMessage, seqno: number) {
     var prefix = "(#" + seqno + ") ";
     msg.on("body", async function (stream, info) {
-      // var buffer = "";
-      // stream.on("data", function (chunk) {
-      //   // count += chunk.length;
-      //   buffer += chunk.toString("utf8");
-      // });
-
-      // stream.once("end", () => {
-      //   console.log("buffer", buffer);
-
-      //   resolve(buffer);
-      // });
-
       //Create a write stream so that we can stream the attachment to file;
       console.log(
         prefix + "Streaming this attachment to file",
@@ -319,33 +306,6 @@ function buildAttMessageFunction(
         //here we have none or some other decoding streamed directly to the file which renders it useless probably
         stream.pipe(writeStream);
       }
-
-      // const s3Client = new S3Client({});
-
-      // const myStream = createReadStream(fileFullPath);
-
-      // console.log(prefix + "Uploading to S3 bucket", fileFullPath);
-      // const s3result = await s3Client.send(
-      //   new PutObjectCommand({
-      //     Bucket: "public-email-images-001",
-      //     Key: "attachments/" + filename,
-      //     Body: myStream,
-      //   })
-      // );
-
-      // console.log("S3 Result:", s3result);
-      // console.log("Uploading to S3 bucket & Generating URL...");
-      // const url = await getSignedUrl(
-      //   s3Client,
-      //   new GetObjectCommand({
-      //     Bucket: "public-email-images-001",
-      //     Key: "attachments/" + filename,
-      //   }),
-      //   { expiresIn: 3600 }
-      // );
-
-      // console.log("URL:", url);
-      // resolve(url);
     });
 
     msg.once("end", function () {
@@ -521,14 +481,12 @@ export const getEmailMessages = async (config: ReadMailConfig) => {
   const imapResult = await runImapCommand<EmailMsg[]>((resolve, reject) => {
     readImapMailbox(resolve, reject, config);
   });
-  console.log("FINISHED (runImapCommand)");
 
   return imapResult;
 };
 
 export const getAttachment = async (config: ReadMailConfig) => {
   const messages = await getEmailMessages(config);
-  console.log("FINISHED (getEmailMessages)");
 
   const message = messages.filter((m) => m.msgID != "")[0];
   const att = message.attachments.filter(
